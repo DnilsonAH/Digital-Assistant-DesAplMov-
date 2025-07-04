@@ -2,6 +2,10 @@ package com.shrimpdevs.digitalassistant.screens.event
 
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -258,10 +262,31 @@ fun CreateEvent(
                 onCheckedChange = { alarm = it }
             )
         }
+        //shonk.png :3
+        var showImage by remember { mutableStateOf(false) }
+        if (showImage) {
+            AnimatedVisibility(
+                visible = showImage,
+                enter = fadeIn(animationSpec = tween(durationMillis = 1000))
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.shonk),
+                    contentDescription = "Evento creado",
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .size(200.dp)
+                        .align(Alignment.CenterHorizontally)
+                )
+            }
+        }
 
+        //boton para enviar
         Button(
             onClick = @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
+                showImage=true
+
                 val helper = NotificationHelper
+
                 val event = Event(
                     title = title,
                     description = description,
