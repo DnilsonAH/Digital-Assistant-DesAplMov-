@@ -64,7 +64,7 @@ dependencies {
     debugImplementation(libs.androidx.ui.test.manifest)
     implementation("androidx.compose.material3:material3:1.2.1")
     //Firebase y google services dependencias
-    implementation(platform("com.google.firebase:firebase-bom:32.8.0")) // Verifica la versión más reciente en Firebase docs
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))// Verifica la versión más reciente en Firebase docs
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation(libs.firebase.firestore)
     implementation(libs.firebase.config)
@@ -84,4 +84,5 @@ dependencies {
     implementation("androidx.compose.animation:animation-android:1.7.0")
     implementation("androidx.compose.ui:ui-android:1.7.0")
     implementation("androidx.compose.runtime:runtime-android:1.7.1")
+    implementation(platform("com.google.firebase:firebase-bom:32.8.0"))
 }

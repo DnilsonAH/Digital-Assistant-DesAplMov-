@@ -35,7 +35,6 @@ fun EventScreen(
     eventDao: EventDao,
     auth: FirebaseAuth,
     navigateToCreateEvent: () -> Unit,
-    navigateToInitial: () -> Unit,
     onEventClick: (Event) -> Unit,
     navigateToSettings: () -> Unit,
     navHostController: NavHostController
