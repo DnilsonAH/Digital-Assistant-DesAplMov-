@@ -6,6 +6,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
+    //notificaciones
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
 
         <!-- Para controlar el volumen -->
         <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />

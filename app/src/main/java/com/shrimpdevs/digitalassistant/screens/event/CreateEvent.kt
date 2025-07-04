@@ -72,9 +72,11 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.shrimpdevs.digitalassistant.notifications.NotificationHelper
 import com.shrimpdevs.digitalassistant.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -87,6 +89,7 @@ fun CreateEvent(
     auth: FirebaseAuth,
     navigateToEvent: () -> Unit
 ) {
+    val context= LocalContext.current
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
@@ -253,6 +256,7 @@ fun CreateEvent(
 
         Button(
             onClick = {
+                val helper = NotificationHelper
                 val event = Event(
                     title = title,
                     description = description,
@@ -260,6 +264,7 @@ fun CreateEvent(
                     location = location,
                     alarm = alarm
                 )
+                helper.showNotification(context,"Evento Creado", "Su evento fue creado para ${selectedDate.time}")
                 auth.currentUser?.uid?.let { userId ->
                     CoroutineScope(Dispatchers.IO).launch {
                         try {
