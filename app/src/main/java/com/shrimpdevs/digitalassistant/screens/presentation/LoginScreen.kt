@@ -56,6 +56,7 @@ import com.shrimpdevs.digitalassistant.ui.theme.ShapeButton
 import com.shrimpdevs.digitalassistant.ui.theme.UnselectedField
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 
 
@@ -120,6 +121,8 @@ fun LoginScreen(
                     .fillMaxWidth(),
                 value = email,
                 onValueChange = { email = it },
+                // texto blanco
+                textStyle = TextStyle(color = Color.White, fontSize = 20.sp),
                 placeholder = { Text("Correo", color = GrayL, fontWeight = FontWeight.Light, fontSize = 20.sp) },
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = BackgroundTextField,
@@ -154,6 +157,7 @@ fun LoginScreen(
                 value = password,
                 onValueChange = { password = it },
                 visualTransformation = PasswordVisualTransformation(),
+                textStyle = TextStyle(color = Color.White, fontSize = 20.sp),
                 placeholder = { Text("Contraseña", color = GrayL, fontWeight = FontWeight.Light, fontSize = 20.sp) },
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = BackgroundTextField,
