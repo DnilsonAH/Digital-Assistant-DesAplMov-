@@ -1,67 +1,71 @@
 package com.shrimpdevs.digitalassistant.pomodoro
 
+import android.content.Context
+import android.media.MediaPlayer
 import android.os.CountDownTimer
-import androidx.compose.runtime.*
+import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import com.shrimpdevs.digitalassistant.R
 
+class PomodoroTimerManager(private val context: Context) {
+    private var mediaPlayer: MediaPlayer? = null
 
-class PomodoroTimerManager {
+    private var _showAlarmDialog = MutableStateFlow(false)
+    val showAlarmDialog: StateFlow<Boolean> = _showAlarmDialog.asStateFlow()
+
     private var timeCountDown: CountDownTimer? = null
-    private var _timeSelected = MutableStateFlow(0) // Tiempo total seleccionado en segundos
+    private var _timeSelected = MutableStateFlow(0)
     val timeSelected: StateFlow<Int> = _timeSelected.asStateFlow()
 
-    private var _timeProgress = MutableStateFlow(0) // Progreso actual del contador en segundos
+    private var _timeProgress = MutableStateFlow(0)
     val timeProgress: StateFlow<Int> = _timeProgress.asStateFlow()
 
-    private var _pauseOffSet = MutableStateFlow(0L) // Segundos que han transcurrido antes de la pausa
+    private var _pauseOffSet = MutableStateFlow(0L)
     val pauseOffSet: StateFlow<Long> = _pauseOffSet.asStateFlow()
 
-    private var _isTimerRunning = MutableStateFlow(false) // Indica si el temporizador está corriendo
+    private var _isTimerRunning = MutableStateFlow(false)
     val isTimerRunning: StateFlow<Boolean> = _isTimerRunning.asStateFlow()
 
-    private var _displayTime = MutableStateFlow("00:00:00") // Tiempo formateado para mostrar
+    private var _displayTime = MutableStateFlow("00:00:00")
     val displayTime: StateFlow<String> = _displayTime.asStateFlow()
 
     private val coroutineScope = CoroutineScope(Dispatchers.Main)
 
+    init {
+        try {
+            mediaPlayer = MediaPlayer.create(context, R.raw.alarm_sound)
+            mediaPlayer?.isLooping = true
+        } catch (e: Exception) {
+            Log.e("PomodoroTimerManager", "Error al inicializar MediaPlayer", e)
+        }
+    }
 
     fun setTime(hours: Int, minutes: Int, seconds: Int) {
-        stopTimer() // Detiene cualquier temporizador en curso
-        _timeSelected.value = hours * 3600 + minutes * 60 + seconds
-        _timeProgress.value = 0
-        _pauseOffSet.value = 0L
-        _isTimerRunning.value = false
-        updateDisplayTime(_timeSelected.value.toLong())
+        val totalSeconds = hours * 3600 + minutes * 60 + seconds
+        _timeSelected.value = totalSeconds
+        _timeProgress.value = totalSeconds
+        updateDisplayTime(totalSeconds)
     }
 
     fun startTimer() {
-        if (_timeSelected.value == 0) {
-            return
-        }
-
-        val remainingMillis = (_timeSelected.value.toLong() * 1000) - (_pauseOffSet.value * 1000)
-
-        if (remainingMillis <= 0 && !_isTimerRunning.value) { // Si ya terminó o no hay tiempo, reinicia
-            updateDisplayTime(0)
-            return
-        }
+        if (_timeSelected.value <= 0) return
 
         _isTimerRunning.value = true
-        timeCountDown = object : CountDownTimer(remainingMillis, 1000) {
+        timeCountDown = object : CountDownTimer(
+            (_timeProgress.value * 1000).toLong(),
+            1000
+        ) {
             override fun onTick(millisUntilFinished: Long) {
-                _pauseOffSet.value = (_timeSelected.value.toLong() * 1000 - millisUntilFinished) / 1000
-                _timeProgress.value = _pauseOffSet.value.toInt() // Progreso de la barra
-                updateDisplayTime(millisUntilFinished / 1000)
+                _timeProgress.value = (millisUntilFinished / 1000).toInt()
+                updateDisplayTime(_timeProgress.value)
             }
 
             override fun onFinish() {
                 stopTimer()
-                updateDisplayTime(0)
             }
         }.start()
     }
@@ -73,41 +77,60 @@ class PomodoroTimerManager {
 
     fun resetTimer() {
         stopTimer()
-        _timeSelected.value = 0
-        _timeProgress.value = 0
-        _pauseOffSet.value = 0L
+        stopAlarm()
+        _timeProgress.value = _timeSelected.value
         _isTimerRunning.value = false
-        updateDisplayTime(0)
+        updateDisplayTime(_timeSelected.value)
     }
 
-    fun addExtraTime(secondsToAdd: Int) {
-        if (_timeSelected.value != 0) {
-            val oldTimeSelected = _timeSelected.value
-            _timeSelected.value += secondsToAdd // Añade tiempo al total
+    fun dismissAlarm() {
+        _showAlarmDialog.value = false
+        stopAlarm()
+    }
 
-            val elapsedMillis = _pauseOffSet.value * 1000L
-            val remainingMillisBeforeAdd = (oldTimeSelected.toLong() * 1000L) - elapsedMillis
-            val newTotalMillis = _timeSelected.value.toLong() * 1000L
-            val newRemainingMillis = remainingMillisBeforeAdd + (secondsToAdd * 1000L)
+    fun addExtraTime(seconds: Int) {
+        val newProgress = _timeProgress.value + seconds
+        _timeProgress.value = newProgress
+        if (_isTimerRunning.value) {
+            pauseTimer()
+            startTimer()
+        } else {
+            updateDisplayTime(newProgress)
+        }
+    }
 
-            _pauseOffSet.value = (newTotalMillis - newRemainingMillis) / 1000L
+    private fun playAlarm() {
+        try {
+            mediaPlayer?.start()
+        } catch (e: Exception) {
+            Log.e("PomodoroTimerManager", "Error al reproducir alarma", e)
+        }
+    }
 
-            if (_isTimerRunning.value) {
-                stopTimer()
-                startTimer()
-            } else {
-
-                updateDisplayTime((_timeSelected.value.toLong() - _pauseOffSet.value))
+    private fun stopAlarm() {
+        try {
+            mediaPlayer?.apply {
+                if (isPlaying) {
+                    stop()
+                    prepare()
+                }
             }
+        } catch (e: Exception) {
+            Log.e("PomodoroTimerManager", "Error al detener alarma", e)
         }
     }
 
     private fun stopTimer() {
         timeCountDown?.cancel()
         timeCountDown = null
+        _isTimerRunning.value = false
+        if (_timeProgress.value <= 0) {
+            _showAlarmDialog.value = true
+            playAlarm()
+        }
     }
 
-    private fun updateDisplayTime(seconds: Long) {
+    private fun updateDisplayTime(seconds: Int) {
         val hours = seconds / 3600
         val minutes = (seconds % 3600) / 60
         val secs = seconds % 60
@@ -116,5 +139,8 @@ class PomodoroTimerManager {
 
     fun clear() {
         stopTimer()
+        stopAlarm()
+        mediaPlayer?.release()
+        mediaPlayer = null
     }
 }

@@ -1,4 +1,4 @@
-package com.shrimpdevs.digitalassistant.pomodoro
+package com.shrimpdevs.digitalassistant.screens.pomodoro
 
 import android.widget.Toast
 import androidx.compose.foundation.Canvas
@@ -6,57 +6,54 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import android.content.Context
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.ui.graphics.Brush
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.shrimpdevs.digitalassistant.R
+import com.shrimpdevs.digitalassistant.pomodoro.PomodoroTimerManager
+import com.shrimpdevs.digitalassistant.ui.theme.*
 
+private val MaxBlue = Color(0xFF1E88E5)
+private val LightGray = Color(0xFFEEEEEE)
 
-// Colores
-val MaxBlue = Color(0xFF1E88E5)
-val LightGray = Color(0xFFEEEEEE)
-val StartGradientColor = Color(0xFF1B1464)
-val EndGradientColor = Color(0xFF000000)
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PomodoroScreen(
-    modifier: Modifier = Modifier,
-    onNavigateBack: () -> Unit
-) {
+fun PomodoroScreen(navHostController: NavHostController) {
     val context = LocalContext.current
-    val timerManager = remember { PomodoroTimerManager() }
+    val timerManager = remember { PomodoroTimerManager(context) }
 
+    val showAlarmDialog by timerManager.showAlarmDialog.collectAsState()
     val timeSelected by timerManager.timeSelected.collectAsState()
     val timeProgress by timerManager.timeProgress.collectAsState()
     val isTimerRunning by timerManager.isTimerRunning.collectAsState()
-    val displayTime by timerManager.displayTime.collectAsState() // Correcto: displayTime
-
+    val displayTime by timerManager.displayTime.collectAsState()
     var showTimePickerDialog by remember { mutableStateOf(false) }
 
+    // Diálogos
     if (showTimePickerDialog) {
         TimePickerDialog(
             onDismissRequest = { showTimePickerDialog = false },
@@ -70,154 +67,185 @@ fun PomodoroScreen(
         )
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(StartGradientColor, EndGradientColor),
-                    startY = 0f,
-                    endY = Float.POSITIVE_INFINITY
-                )
-            )
-            .padding(16.dp), // Mantén el padding
-        contentAlignment = Alignment.Center
-    ) {
-        // --- Botón de Retroceso ---
-        IconButton(
-            onClick = onNavigateBack,
+    if (showAlarmDialog) {
+        AlarmDialog(onDismiss = { timerManager.dismissAlarm() })
+    }
+
+    Scaffold(
+        topBar = { PomodoroTopBar(navHostController) },
+        bottomBar = { PomodoroBottomBar(navHostController) }
+    ) { paddingValues ->
+        Box(
             modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(top = 8.dp)
+                .fillMaxSize()
+                .background(Brush.verticalGradient(listOf(DarkBlue, Black)))
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceAround,
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Temporizador circular
+                TimerCircle(
+                    timeSelected = timeSelected,
+                    timeProgress = timeProgress,
+                    displayTime = displayTime
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+
+                // Controles
+                TimerControls(
+                    isTimerRunning = isTimerRunning,
+                    onShowTimePicker = { showTimePickerDialog = true },
+                    onStartPause = {
+                        if (isTimerRunning) timerManager.pauseTimer()
+                        else timerManager.startTimer()
+                    },
+                    onReset = { timerManager.resetTimer() }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Botón +15s
+                ExtraTimeButton(
+                    timeSelected = timeSelected,
+                    onAddTime = { timerManager.addExtraTime(15) },
+                    context = context
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TimerCircle(
+    timeSelected: Int,
+    timeProgress: Int,
+    displayTime: String
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier.size(250.dp)
+    ) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            drawCircle(
+                color = LightGray.copy(alpha = 0.3f),
+                radius = size.minDimension / 2,
+                style = Stroke(width = 12.dp.toPx())
+            )
+        }
+
+        if (timeSelected > 0) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                drawArc(
+                    color = MaxBlue,
+                    startAngle = -90f,
+                    sweepAngle = (timeProgress.toFloat() / timeSelected.toFloat()) * 360f,
+                    useCenter = false,
+                    style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
+                )
+            }
+        }
+
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = displayTime,
+                fontSize = 50.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaxBlue
+            )
+            Text(
+                text = "Tiempo restante",
+                fontSize = 18.sp,
+                color = Color.Gray
+            )
+        }
+    }
+}
+
+@Composable
+private fun TimerControls(
+    isTimerRunning: Boolean,
+    onShowTimePicker: () -> Unit,
+    onStartPause: () -> Unit,
+    onReset: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        ImageButton(
+            onClick = onShowTimePicker,
+            icon = Icons.Default.Add,
+            description = "Añadir tiempo",
+            backgroundColor = Color.Transparent,
+            iconTint = Color.White,
+            modifier = Modifier.size(48.dp)
+        )
+
+        Button(
+            onClick = onStartPause,
+            shape = RoundedCornerShape(24.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaxBlue),
+            modifier = Modifier
+                .height(50.dp)
+                .padding(horizontal = 8.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
-                contentDescription = "Volver",
-                tint = Color.White
+                imageVector = if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
+                contentDescription = if (isTimerRunning) "Pausar" else "Empezar",
+                tint = Color.White,
+                modifier = Modifier.size(32.dp)
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = if (isTimerRunning) "Pausar" else "Empezar",
+                color = Color.White,
+                fontSize = 20.sp
             )
         }
 
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceAround,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Spacer(modifier = Modifier.height(60.dp))
+        ImageButton(
+            onClick = onReset,
+            icon = Icons.Default.Refresh,
+            description = "Reiniciar",
+            backgroundColor = Color.Transparent,
+            iconTint = Color.White,
+            modifier = Modifier.size(48.dp)
+        )
+    }
+}
 
-            Box(
-                contentAlignment = Alignment.Center,
-                modifier = Modifier.size(250.dp)
-            ) {
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    drawCircle(
-                        color = LightGray.copy(alpha = 0.3f),
-                        radius = size.minDimension / 2,
-                        style = Stroke(width = 12.dp.toPx())
-                    )
-                }
-
-                if (timeSelected > 0) {
-                    val sweepAngle = (timeProgress.toFloat() / timeSelected.toFloat()) * 360f
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawArc(
-                            color = MaxBlue,
-                            startAngle = -90f,
-                            sweepAngle = sweepAngle,
-                            useCenter = false,
-                            style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                        )
-                    }
-                }
-
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        text = displayTime,
-                        fontSize = 50.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaxBlue
-                    )
-                    Text(
-                        text = "Tiempo restante",
-                        fontSize = 18.sp,
-                        color = Color.Gray
-                    )
-                }
+@Composable
+private fun ExtraTimeButton(
+    timeSelected: Int,
+    onAddTime: () -> Unit,
+    context: Context
+) {
+    Button(
+        onClick = {
+            if (timeSelected != 0) {
+                onAddTime()
+                Toast.makeText(context, "15 segundos añadidos", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(context, "Establece el tiempo primero", Toast.LENGTH_SHORT).show()
             }
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceAround,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                ImageButton(
-                    onClick = { showTimePickerDialog = true },
-                    icon = Icons.Default.Add,
-                    description = "Añadir tiempo",
-                    backgroundColor = Color.Transparent,
-                    iconTint = Color.White,
-                    modifier = Modifier.size(48.dp)
-                )
-
-                Button(
-                    onClick = {
-                        if (isTimerRunning) {
-                            timerManager.pauseTimer()
-                        } else {
-                            timerManager.startTimer()
-                        }
-                    },
-                    shape = RoundedCornerShape(24.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = MaxBlue),
-                    modifier = Modifier
-                        .height(50.dp)
-                        .padding(horizontal = 8.dp)
-                ) {
-                    Icon(
-                        imageVector = if (isTimerRunning) Icons.Default.Pause else Icons.Default.PlayArrow,
-                        contentDescription = if (isTimerRunning) "Pausar" else "Empezar",
-                        tint = Color.White,
-                        modifier = Modifier.size(32.dp)
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = if (isTimerRunning) "Pausar" else "Empezar",
-                        color = Color.White,
-                        fontSize = 20.sp
-                    )
-                }
-
-                ImageButton(
-                    onClick = { timerManager.resetTimer() },
-                    icon = Icons.Default.Refresh,
-                    description = "Reiniciar",
-                    backgroundColor = Color.Transparent,
-                    iconTint = Color.White,
-                    modifier = Modifier.size(48.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            Button(
-                onClick = {
-                    if (timeSelected != 0) {
-                        timerManager.addExtraTime(15)
-                        Toast.makeText(context, "15 segundos añadidos", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Establece el tiempo primero", Toast.LENGTH_SHORT).show()
-                    }
-                },
-                shape = RoundedCornerShape(24.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = MaxBlue.copy(alpha = 0.7f)),
-                modifier = Modifier
-                    .fillMaxWidth(0.6f)
-                    .height(45.dp)
-            ) {
-                Text(text = "+15s", color = Color.White, fontSize = 18.sp)
-            }
-        }
+        },
+        shape = RoundedCornerShape(24.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = MaxBlue.copy(alpha = 0.7f)),
+        modifier = Modifier
+            .fillMaxWidth(0.6f)
+            .height(45.dp)
+    ) {
+        Text(text = "+15s", color = Color.White, fontSize = 18.sp)
     }
 }
 
@@ -379,5 +407,114 @@ fun ImageButton(
             tint = iconTint,
             modifier = Modifier.size(buttonSize * 0.6f)
         )
+    }
+}
+@Composable
+private fun AlarmDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .background(
+                color = DarkBlue,
+                shape = RoundedCornerShape(16.dp)
+            ),
+        onDismissRequest = onDismiss,
+        containerColor = DarkBlue,
+        titleContentColor = White,
+        textContentColor = White,
+        title = {
+            Text(
+                "¡Tiempo Completado!",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+        },
+        text = {
+            Text(
+                "Has completado tu sesión de Pomodoro.",
+                fontSize = 16.sp
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onDismiss,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaxBlue
+                )
+            ) {
+                Text("Aceptar")
+            }
+        }
+    )
+}
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun PomodoroTopBar(navHostController: NavHostController) {
+    CenterAlignedTopAppBar(
+        title = { Text("Pomodoro", color = White) },
+        navigationIcon = {
+            IconButton(onClick = { navHostController.navigate("event") }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_back),
+                    contentDescription = "Regresar",
+                    tint = White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        },
+        actions = {
+            IconButton(onClick = { navHostController.navigate("Settings") }) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_settings),
+                    contentDescription = "Ajustes",
+                    tint = White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        },
+        colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            containerColor = DarkBlue
+        )
+    )
+}
+@Composable
+private fun PomodoroBottomBar(navHostController: NavHostController) {
+    NavigationBar(
+        containerColor = DarkBlue,
+        contentColor = White
+    ) {
+        val navBackStackEntry by navHostController.currentBackStackEntryAsState()
+        val currentRoute = navBackStackEntry?.destination?.route
+
+        val navItems = listOf(
+            Triple("Inicio", R.drawable.ic_event, "event"),
+            Triple("Calendario", R.drawable.ic_calendar, "calendar_route"),
+            Triple("Pomodoro", R.drawable.ic_access_time, "pomodoro_screen_route")
+        )
+
+        navItems.forEach { (label, iconResId, route) ->
+            NavigationBarItem(
+                selected = currentRoute == route,
+                onClick = {
+                    if (currentRoute != route) {
+                        navHostController.navigate(route)
+                    }
+                },
+                icon = {
+                    Icon(
+                        painter = painterResource(id = iconResId),
+                        contentDescription = label
+                    )
+                },
+                label = { Text(label) },
+                colors = NavigationBarItemDefaults.colors(
+                    selectedIconColor = White,
+                    unselectedIconColor = White.copy(alpha = 0.5f),
+                    selectedTextColor = White,
+                    unselectedTextColor = White.copy(alpha = 0.5f),
+                    indicatorColor = DarkText
+                )
+            )
+        }
     }
 }
