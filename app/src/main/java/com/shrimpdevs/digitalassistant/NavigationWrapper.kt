@@ -82,7 +82,6 @@ fun NavigationWrapper(
                     eventDao = eventDao,
                     auth = auth,
                     navigateToCreateEvent = { navHostController.navigate("CreateEvent") },
-                    navigateToInitial = { navHostController.navigate("initial") },
                     navigateToSettings = { navHostController.navigate("Settings") },
                     onEventClick = { event: Event ->
                         navHostController.currentBackStackEntry?.savedStateHandle?.set(
