@@ -17,6 +17,7 @@ import com.shrimpdevs.digitalassistant.screens.presentation.InitialScreen
 import com.shrimpdevs.digitalassistant.screens.presentation.LoginScreen
 import com.shrimpdevs.digitalassistant.screens.presentation.SignUpScreen
 import com.shrimpdevs.digitalassistant.screens.settings.SettingsScreen
+import com.shrimpdevs.digitalassistant.pomodoro.PomodoroScreen // Importación correcta del PomodoroScreen
 
 @Composable
 fun NavigationWrapper(
@@ -26,10 +27,18 @@ fun NavigationWrapper(
 ) {
     val context = LocalContext.current
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(auth.currentUser) { // <-- Depende de auth.currentUser
         if (auth.currentUser != null) {
-            navHostController.navigate("event") {
-                popUpTo("initial") { inclusive = true }
+            // Solo navega si la ruta actual NO es "event" para evitar bucles o recreaciones
+            if (navHostController.currentDestination?.route != "event" &&
+                navHostController.currentDestination?.route != "pomodoro_screen_route" && // Asegura que no navegue si ya está en Pomodoro
+                navHostController.currentDestination?.route != "calendar_route" &&
+                navHostController.currentDestination?.route != "profile_route"
+            ) {
+                navHostController.navigate("event") {
+                    popUpTo("initial") { inclusive = true }
+                    launchSingleTop = true
+                }
             }
         }
     }
@@ -76,7 +85,8 @@ fun NavigationWrapper(
                         value = event
                     )
                     navHostController.navigate("EditEvent")
-                }
+                },
+                navHostController = navHostController
             )
         }
         composable ("CreateEvent"){
@@ -101,5 +111,12 @@ fun NavigationWrapper(
                 navHostController = navHostController
             )
         }
+        // Este ya lo tenías bien
+        composable("pomodoro_screen_route") {
+            PomodoroScreen(onNavigateBack = { navHostController.popBackStack() })
+        }
+        // Asegúrate de tener los otros composables de la barra inferior si existen:
+        composable("calendar_route") { /* Tu CalendarScreen */ }
+        composable("profile_route") { /* Tu ProfileScreen */ }
     }
 }

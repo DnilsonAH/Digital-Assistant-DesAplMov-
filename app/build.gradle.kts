@@ -52,6 +52,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.androidx.constraintlayout)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -70,4 +71,12 @@ dependencies {
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     // Facebook Sign In
     implementation("com.facebook.android:facebook-login:16.3.0")
+    // Para los íconos de Material Design Extended (como Play/Pause, Add, Refresh)
+    implementation("androidx.compose.material:material-icons-extended:1.6.7") // Usa la versión actual de tu Compose BOM o la última estable
+    // O si estás usando material3, la dependencia es ligeramente diferente para los íconos extendidos
+    implementation("androidx.compose.material:material-icons-core:1.6.7")
+    implementation("androidx.compose.material:material-icons-extended:1.6.7")
+    // O la versión de tu BOM
+    implementation("androidx.compose.material:material-icons-extended:1.6.7")
+    implementation(platform("androidx.compose:compose-bom:2024.06.00"))
 }

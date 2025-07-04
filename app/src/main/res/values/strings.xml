@@ -3,4 +3,5 @@
     <string name="facebook_app_id" translatable="false">1434019071098933</string>
     <string name="fb_login_protocol_scheme" translatable="false">fb1434019071098933</string>
     <string name="facebook_client_token" translatable="false">ff86e7d690afe843c8eb8faf4405a98d</string>
+    <string name="tiempo_restante">Tiempo restante</string>
 </resources>
