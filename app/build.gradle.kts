@@ -81,4 +81,7 @@ dependencies {
     // O la versión de tu BOM
     implementation("androidx.compose.material:material-icons-extended:1.6.7")
     implementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    implementation("androidx.compose.animation:animation-android:1.7.0")
+    implementation("androidx.compose.ui:ui-android:1.7.0")
+    implementation("androidx.compose.runtime:runtime-android:1.7.1")
 }

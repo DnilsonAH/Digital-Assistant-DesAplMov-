@@ -16,22 +16,24 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.google.firebase.firestore.FirebaseFirestore
-import com.shrimpdevs.digitalassistant.R // Asegúrate de que tu R general esté importado
-import com.shrimpdevs.digitalassistant.models.Event
-import com.shrimpdevs.digitalassistant.ui.theme.* // Asegúrate de que tus colores (DarkBlue, White, DarkText, Black) estén definidos aquí
-
-// Importaciones de navegación
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
-import androidx.navigation.NavGraph.Companion.findStartDestination
-import androidx.navigation.navOptions // IMPORTANTE: PARA USAR navOptions
-
+import com.google.firebase.auth.FirebaseAuth
+import com.shrimpdevs.digitalassistant.R
+import com.shrimpdevs.digitalassistant.dao.EventDao
+import com.shrimpdevs.digitalassistant.dao.EventResult
+import com.shrimpdevs.digitalassistant.models.Event
+import com.shrimpdevs.digitalassistant.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EventScreen(
-    db: FirebaseFirestore,
+    eventDao: EventDao,
+    auth: FirebaseAuth,
     navigateToCreateEvent: () -> Unit,
     navigateToInitial: () -> Unit,
     onEventClick: (Event) -> Unit,
@@ -39,26 +41,56 @@ fun EventScreen(
     navHostController: NavHostController
 ) {
     var events by remember { mutableStateOf<List<Event>>(emptyList()) }
+    val userId = auth.currentUser?.uid
 
+    // Efecto para cargar eventos iniciales
     LaunchedEffect(Unit) {
-        db.collection("events")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.e("EventScreen", "Error al obtener eventos", e)
-                    return@addSnapshotListener
+        userId?.let { id ->
+            try {
+                withContext(Dispatchers.IO) {
+                    when (val result = eventDao.getAllEventsForUser(id)) {
+                        is EventResult.Success -> {
+                            withContext(Dispatchers.Main) {
+                                events = result.data
+                            }
+                        }
+                        is EventResult.Error -> {
+                            Log.e("EventScreen", "Error al obtener eventos", result.exception)
+                        }
+                    }
                 }
-
-                val eventList = snapshot?.documents?.mapNotNull { doc ->
-                    doc.toObject(Event::class.java)
-                }?.sortedBy { it.eventDate.toDate() } ?: emptyList()
-                events = eventList
+            } catch (e: Exception) {
+                Log.e("EventScreen", "Error al cargar eventos", e)
             }
+        }
+    }
+
+    // Efecto para observar cambios en tiempo real
+    DisposableEffect(userId) {
+        userId?.let { id ->
+            eventDao.observeEventsForUser(id) { updatedEvents ->
+                events = updatedEvents
+            }
+        }
+        onDispose {
+            eventDao.clearListeners()
+        }
     }
 
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Eventos", color = White) },
+                actions = {
+                    IconButton(onClick = navigateToSettings) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_settings),
+                            contentDescription = "Ajustes",
+                            tint = White,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
                 colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = DarkBlue
                 )
@@ -121,7 +153,7 @@ fun EventScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Brush.verticalGradient(listOf(DarkBlue, Color.Black)))
+                .background(Brush.verticalGradient(listOf(DarkBlue, Black)))
                 .padding(paddingValues)
         ) {
             LazyColumn(
@@ -133,8 +165,9 @@ fun EventScreen(
                 items(events) { event ->
                     EventCard(
                         event = event,
-                        onEventClick = onEventClick,
-                        onDeleteClick = { deleteEvent(db, event.title) }
+                        eventDao = eventDao,
+                        auth = auth,
+                        onEventClick = onEventClick
                     )
                 }
             }
@@ -145,13 +178,16 @@ fun EventScreen(
 @Composable
 fun EventCard(
     event: Event,
-    onEventClick: (Event) -> Unit,
-    onDeleteClick: () -> Unit
+    eventDao: EventDao,
+    auth: FirebaseAuth,
+    onEventClick: (Event) -> Unit
 ) {
+    val userId = auth.currentUser?.uid
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onEventClick(event) },
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Column(
@@ -164,24 +200,50 @@ fun EventCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clickable { onEventClick(event) }
-                ) {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = event.title,
                         fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = DarkText
                     )
-                    Text(text = event.description)
-                    Text(text = event.getFormattedDate())
-                    Text(text = "Ubicación: ${event.location}")
-                    Text(text = "Alarma: ${if (event.alarm) "Activada" else "Desactivada"}")
+                    Text(
+                        text = event.description,
+                        color = DarkText.copy(alpha = 0.8f)
+                    )
+                    Text(
+                        text = event.getFormattedDate(),
+                        color = DarkText.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = "Ubicación: ${event.location}",
+                        color = DarkText.copy(alpha = 0.7f)
+                    )
+                    Text(
+                        text = "Alarma: ${if (event.alarm) "Activada" else "Desactivada"}",
+                        color = DarkText.copy(alpha = 0.6f)
+                    )
                 }
 
                 IconButton(
-                    onClick = onDeleteClick
+                    onClick = {
+                        userId?.let { id ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                try {
+                                    when (val result = eventDao.deleteEvent(event.title, id)) {
+                                        is EventResult.Success -> {
+                                            Log.d("EventScreen", "Evento eliminado con éxito")
+                                        }
+                                        is EventResult.Error -> {
+                                            Log.e("EventScreen", "Error al eliminar evento", result.exception)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e("EventScreen", "Error al eliminar evento", e)
+                                }
+                            }
+                        }
+                    }
                 ) {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_delete),
@@ -192,21 +254,4 @@ fun EventCard(
             }
         }
     }
-}
-
-private fun deleteEvent(db: FirebaseFirestore, title: String) {
-    db.collection("events")
-        .whereEqualTo("title", title)
-        .get()
-        .addOnSuccessListener { documents ->
-            for (document in documents) {
-                document.reference.delete()
-                    .addOnFailureListener { e ->
-                        Log.e("EventScreen", "Error al eliminar evento", e)
-                    }
-            }
-        }
-        .addOnFailureListener { e ->
-            Log.e("EventScreen", "Error al buscar evento", e)
-        }
 }

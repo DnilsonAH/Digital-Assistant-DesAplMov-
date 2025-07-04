@@ -14,20 +14,25 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.shrimpdevs.digitalassistant.R
+import com.shrimpdevs.digitalassistant.dao.EventDao
 import com.shrimpdevs.digitalassistant.models.Event
 import com.shrimpdevs.digitalassistant.ui.theme.*
-import androidx.compose.material3.*
-import androidx.compose.foundation.layout.*
-import com.google.firebase.Timestamp
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EditEvent(
-    db: FirebaseFirestore,
+    eventDao: EventDao,
+    auth: FirebaseAuth,
     event: Event,
     navigateBack: () -> Unit
 ) {
@@ -206,7 +211,18 @@ fun EditEvent(
                     location = location,
                     alarm = alarm
                 )
-                updateEvent(db, event.title, updatedEvent, navigateBack)
+                auth.currentUser?.uid?.let { userId ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            eventDao.updateEvent(event.title, updatedEvent, userId)
+                            withContext(Dispatchers.Main) {
+                                navigateBack()
+                            }
+                        } catch (e: Exception) {
+                            Log.e("EditEvent", "Error al actualizar evento", e)
+                        }
+                    }
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
