@@ -1,6 +1,7 @@
 package com.shrimpdevs.digitalassistant.screens.event
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -76,7 +77,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.shrimpdevs.digitalassistant.notifications.NotificationHelper
+import com.shrimpdevs.digitalassistant.notifications.*
+import com.shrimpdevs.digitalassistant.notifications.TaskReminderReceiver
+
+
 import com.shrimpdevs.digitalassistant.ui.theme.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -89,12 +93,13 @@ fun CreateEvent(
     auth: FirebaseAuth,
     navigateToEvent: () -> Unit
 ) {
+
     val context= LocalContext.current
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
     var alarm by remember { mutableStateOf(false) }
-    var selectedDate by remember { mutableStateOf(Calendar.getInstance()) }
+    var selectedDate by remember { mutableStateOf(Calendar.getInstance(TimeZone.getDefault())) }
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
@@ -255,7 +260,7 @@ fun CreateEvent(
         }
 
         Button(
-            onClick = {
+            onClick = @androidx.annotation.RequiresPermission(android.Manifest.permission.POST_NOTIFICATIONS) {
                 val helper = NotificationHelper
                 val event = Event(
                     title = title,
@@ -264,7 +269,37 @@ fun CreateEvent(
                     location = location,
                     alarm = alarm
                 )
-                helper.showNotification(context,"Evento Creado", "Su evento fue creado para ${selectedDate.time}")
+                if (alarm) {
+                    val eventTimeMillis = selectedDate.timeInMillis
+                    val eventId = (0..Int.MAX_VALUE).random()
+
+                    if (checkExactAlarmPermission(context)) {
+                        scheduleEventNotification(
+                            context = context,
+                            eventId = eventId,
+                            title = title,
+                            description = "Tu evento es en 10 minutos: $title",
+                            eventTimeMillis = eventTimeMillis- (10*60*1000)
+                        )
+                        scheduleEventNotification(
+                            context = context,
+                            eventId = eventId,
+                            title = title,
+                            description = "Tu evento es ahora!!: $title",
+                            eventTimeMillis = eventTimeMillis
+                        )
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Necesitas habilitar permisos de alarmas exactas en Configuración",
+                            Toast.LENGTH_LONG
+                        ).show()
+                        requestExactAlarmPermission(context)
+                    }
+                }
+                // Esta notificación es opcional (instantánea, no programada)
+                helper.showNotification(context, "Evento Creado", "Tu evento fue agendado para ${selectedDate.time}")
+
                 auth.currentUser?.uid?.let { userId ->
                     CoroutineScope(Dispatchers.IO).launch {
                         try {

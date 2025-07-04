@@ -6,15 +6,17 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
 
-    //notificaciones
+    <!-- notifs-->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
 
 
         <!-- Para controlar el volumen -->
         <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
 
         <!-- Para reproducir sonidos en segundo plano -->
-        <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
         <!-- ... resto del manifest -->
     <application
@@ -71,6 +73,8 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/event_widget_info" />
         </receiver>
+        <receiver android:name=".notifications.TaskReminderReceiver" />
+
 
     </application>
 </manifest>
