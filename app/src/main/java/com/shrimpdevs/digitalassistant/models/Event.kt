@@ -16,4 +16,10 @@ data class Event(
         val dateFormat = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
         return dateFormat.format(eventDate.toDate())
     }
+
+    fun isValid(): Boolean {
+        return title.isNotBlank() &&
+                description.isNotBlank() &&
+                location.isNotBlank()
+    }
 }

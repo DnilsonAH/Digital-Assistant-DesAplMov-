@@ -56,13 +56,37 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.google.firebase.auth.FirebaseAuth
+import com.shrimpdevs.digitalassistant.dao.EventDao
 import com.shrimpdevs.digitalassistant.ui.theme.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
+import java.util.*
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.shrimpdevs.digitalassistant.ui.theme.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CreateEvent(db: FirebaseFirestore, navigateToEvent: () -> Unit) {
+fun CreateEvent(
+    eventDao: EventDao,
+    auth: FirebaseAuth,
+    navigateToEvent: () -> Unit
+) {
     var title by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
@@ -236,7 +260,18 @@ fun CreateEvent(db: FirebaseFirestore, navigateToEvent: () -> Unit) {
                     location = location,
                     alarm = alarm
                 )
-                createEvent(db, event, navigateToEvent)
+                auth.currentUser?.uid?.let { userId ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        try {
+                            eventDao.insertEvent(event, userId)
+                            withContext(Dispatchers.Main) {
+                                navigateToEvent()
+                            }
+                        } catch (e: Exception) {
+                            Log.e("CreateEvent", "Error al crear evento", e)
+                        }
+                    }
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -248,7 +283,6 @@ fun CreateEvent(db: FirebaseFirestore, navigateToEvent: () -> Unit) {
         }
     }
 }
-
 private fun createEvent(db: FirebaseFirestore, event: Event, onSuccess: () -> Unit) {
     db.collection("events")
         .add(event)

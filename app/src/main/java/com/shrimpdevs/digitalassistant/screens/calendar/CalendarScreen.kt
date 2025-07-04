@@ -38,16 +38,6 @@ fun CalendarScreen(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Calendario", color = White) },
-                navigationIcon = {
-                    IconButton(onClick = { navHostController.navigate("event") }) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_back),
-                            contentDescription = "Regresar",
-                            tint = White,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                },
                 actions = {
                     IconButton(onClick = { navHostController.navigate("Settings") }) {
                         Icon(
