@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -152,6 +153,7 @@ fun SignUpScreen(
                     .fillMaxWidth(),
                 value = email,
                 onValueChange = { email = it },
+                textStyle = TextStyle(color = Color.White, fontSize = 20.sp),
                 placeholder = { Text("Correo", color = GrayL, fontWeight = FontWeight.Light, fontSize = 20.sp) },
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = BackgroundTextField,
@@ -186,6 +188,7 @@ fun SignUpScreen(
                 value = password,
                 onValueChange = { password = it },
                 visualTransformation = PasswordVisualTransformation(),
+                textStyle = TextStyle(color = Color.White, fontSize = 20.sp),
                 placeholder = { Text("Contraseña", color = GrayL, fontWeight = FontWeight.Light, fontSize = 20.sp) },
                 colors = TextFieldDefaults.colors(
                     unfocusedContainerColor = BackgroundTextField,
