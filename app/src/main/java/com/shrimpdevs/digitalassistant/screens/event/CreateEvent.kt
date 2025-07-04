@@ -5,6 +5,7 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -267,7 +268,8 @@ fun CreateEvent(
         if (showImage) {
             AnimatedVisibility(
                 visible = showImage,
-                enter = fadeIn(animationSpec = tween(durationMillis = 1000))
+                enter = fadeIn(animationSpec = tween(durationMillis = 500)),
+                exit = fadeOut(animationSpec = tween(durationMillis = 500))
             ) {
                 Image(
                     painter = painterResource(id = R.drawable.shonk),
